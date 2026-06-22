@@ -23,7 +23,9 @@ public class InventoryUI : MonoBehaviour
 
         model.OnInventoryChanged += Refresh;
 
-        CreateTestData();
+        model.AddItem(testItems[0], 1);
+        model.AddItem(testItems[1], 100);
+        model.AddItem(testItems[2], 3);
 
         Refresh();
     }
@@ -46,23 +48,21 @@ public class InventoryUI : MonoBehaviour
         }
     }
 
-    private void CreateTestData()
-    {
-        for (int i = 0; i < testItems.Count; i++)
-        {
-            model.SetItem(i, new InventoryItem
-            {
-                data = testItems[i],
-                count = Random.Range(1, 20)
-            });
-        }
-    }
-
     private void Refresh()
     {
         for (int i = 0; i<slots.Count; i++)
         {
             slots[i].Bind(model.Items[i]);
         }
+    }
+
+    public void AddPotion()
+    {
+        model.AddItem(testItems[1], 1);
+    }
+
+    public void RemovePotion()
+    {
+        model.RemoveItem(testItems[1], 1);
     }
 }
