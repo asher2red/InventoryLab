@@ -13,6 +13,8 @@ public class InventoryUI : MonoBehaviour
 
     [SerializeField] private int slotCount = 20;
 
+    [SerializeField] ItemDatabase itemDatabase;
+
     private readonly List<InventorySlotUI> slots = new();
 
     private InventoryModel model;
@@ -51,6 +53,20 @@ public class InventoryUI : MonoBehaviour
 
             slots.Add(slot);
         }
+    }
+
+    public void SaveInventory()
+    {
+        InventorySaveSystem.Save(model.Export());
+    }
+
+    public void LoadnInventory()
+    {
+        var data = InventorySaveSystem.Load();
+
+        if (data == null) return;
+
+        model.import(data, itemDatabase);
     }
 
     private void Refresh()

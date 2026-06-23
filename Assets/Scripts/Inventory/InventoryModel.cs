@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Unity.IO.LowLevel.Unsafe;
 using UnityEngine.Rendering;
+using UnityEngine.UIElements;
 using UnityEngine.WSA;
 
 public class InventoryModel
@@ -138,6 +139,48 @@ public class InventoryModel
         {
             SwapItem(from, to);
         }
+    }
+
+    public void import(InventorySaveData saveData, ItemDatabase database)
+    {
+        for (int i = 0; i<items.Count; i++)
+        {
+            items[i] = null;
+        }
+
+        foreach (var entry in saveData.items)
+        { 
+            items[entry.slotIndex] = new InventoryItem
+            {
+                data = database.GetItem(entry.itemId),
+                count = entry.count
+            };
+        }
+
+        OnInventoryChanged?.Invoke();
+    }
+
+    public InventorySaveData Export()
+    {
+        InventorySaveData saveData = new();
+
+        for (int i = 0; i<items.Count; i++)
+        {
+            var item = items[i];
+
+            if (item == null) continue;
+
+            saveData.items.Add(
+                new InventorySlotSaveData
+                {
+                    slotIndex = i,
+                    itemId = item.data.id,
+                    count = item.count
+                }
+            );
+        }
+
+        return saveData;
     }
 
     public bool AddItem(ItemData itemData, int count = 1)

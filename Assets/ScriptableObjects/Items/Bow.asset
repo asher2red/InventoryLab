@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8fbef879d649040cbb00c246a7f38c0a, type: 3}
   m_Name: Bow
   m_EditorClassIdentifier: Assembly-CSharp::ItemData
-  id: 0
+  id: 3
   itemName: Hunter Bow
   description: 'A lightweight bow favored by hunters.
 
