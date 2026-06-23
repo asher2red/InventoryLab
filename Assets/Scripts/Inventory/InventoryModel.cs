@@ -5,10 +5,13 @@ using Unity.IO.LowLevel.Unsafe;
 public class InventoryModel
 {
     public event Action OnInventoryChanged;
+    public event Action<int> OnSelectedSlotChanged;
 
     public IReadOnlyList<InventoryItem> Items => items;
 
     private readonly List<InventoryItem> items;
+
+    public int SelectedIndex { get; private set; } = -1;
 
     public InventoryModel(int slotCount)
     {
@@ -30,6 +33,23 @@ public class InventoryModel
         items[index] = item;
 
         OnInventoryChanged?.Invoke();
+    }
+
+    public void SelectSlot(int index)
+    {
+        if (index < 0 || index >= items.Count)
+        {
+            return;
+        }
+
+        if (index == SelectedIndex)
+        {
+            return;
+        }
+
+        SelectedIndex = index;
+        
+        OnSelectedSlotChanged?.Invoke(index);
     }
 
     public bool AddItem(ItemData itemData, int count = 1)

@@ -7,6 +7,8 @@ public class InventoryUI : MonoBehaviour
 
     [SerializeField] private Transform slotRoot;
 
+    [SerializeField] private InventoryDetailUI detailUI;
+
     [SerializeField] private List<ItemData> testItems;
 
     [SerializeField] private int slotCount = 20;
@@ -22,6 +24,7 @@ public class InventoryUI : MonoBehaviour
         CreateSlots();
 
         model.OnInventoryChanged += Refresh;
+        model.OnSelectedSlotChanged += OnSelectedSlotChanged;
 
         model.AddItem(testItems[0], 1);
         model.AddItem(testItems[1], 100);
@@ -35,6 +38,7 @@ public class InventoryUI : MonoBehaviour
         if (model != null)
         {
             model.OnInventoryChanged -= Refresh;
+            model.OnSelectedSlotChanged += OnSelectedSlotChanged;
         }
     }
 
@@ -43,6 +47,7 @@ public class InventoryUI : MonoBehaviour
         for (int i = 0; i < slotCount; i++)
         {
             var slot = Instantiate(slotPrefab, slotRoot);
+            slot.Initialize(i, model.SelectSlot);
 
             slots.Add(slot);
         }
@@ -54,6 +59,11 @@ public class InventoryUI : MonoBehaviour
         {
             slots[i].Bind(model.Items[i]);
         }
+    }
+
+    private void OnSelectedSlotChanged(int index)
+    {
+        detailUI.Bind(model.Items[index]);
     }
 
     public void AddPotion()

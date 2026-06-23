@@ -13,8 +13,11 @@ MonoBehaviour:
   m_Name: Bow
   m_EditorClassIdentifier: Assembly-CSharp::ItemData
   id: 0
-  itemName: 
-  description: 
+  itemName: Hunter Bow
+  description: 'A lightweight bow favored by hunters.
+
+    Effective for attacking
+    enemies from a distance.'
   icon: {fileID: 21300000, guid: f48b5a22277fe0c4d86a96c23b12e95f, type: 3}
   stackable: 1
   maxStack: 99

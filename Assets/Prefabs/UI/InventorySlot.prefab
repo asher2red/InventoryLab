@@ -349,3 +349,4 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::InventorySlotUI
   icon: {fileID: 5714974418723215628}
   countText: {fileID: 4613126400012507293}
+  button: {fileID: 1016376627246811714}
