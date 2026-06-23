@@ -1,8 +1,9 @@
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.EventSystems;
 
-public class InventorySlotUI : MonoBehaviour
+public class InventorySlotUI : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHandler, IDropHandler
 {
     [SerializeField] private Image icon;
 
@@ -13,11 +14,13 @@ public class InventorySlotUI : MonoBehaviour
     private int slotIndex;
 
     private System.Action<int> onClick;
+    private System.Action<int, int> onDrop;
 
-    public void Initialize(int index, System.Action<int> callback)
+    public void Initialize(int index, System.Action<int> click, System.Action<int, int> drop)
     {
         slotIndex = index;
-        onClick = callback;
+        onClick = click;
+        onDrop = drop;
 
         button.onClick.AddListener(OnClick);
     }
@@ -47,5 +50,32 @@ public class InventorySlotUI : MonoBehaviour
     private void OnClick()
     {
         onClick?.Invoke(slotIndex);
+    }
+
+    public void OnBeginDrag(PointerEventData eventData)
+    {
+        Debug.Log($"Begin Drag: {slotIndex}");
+
+        InventoryDragContext.DragIndex = slotIndex;
+    }
+
+    public void OnDrag(PointerEventData eventData)
+    {
+        
+    }
+
+    public void OnEndDrag(PointerEventData eventData)
+    {
+        Debug.Log($"End Drag: {slotIndex}");
+    }
+
+    public void OnDrop(PointerEventData eventData)
+    {
+        Debug.Log($"Drop: {slotIndex}");
+
+        int from = InventoryDragContext.DragIndex;
+        int to = slotIndex;
+
+        onDrop?.Invoke(from, to);
     }
 }

@@ -37,7 +37,7 @@ public class InventoryModel
         OnInventoryChanged?.Invoke();
     }
 
-    public InventoryItem getItem(int index)
+    public InventoryItem GetItem(int index)
     {
         if (index < 0 || index >= items.Count)
         {
@@ -121,6 +121,23 @@ public class InventoryModel
         SelectedIndex = index;
 
         OnSelectedSlotChanged?.Invoke(index);
+    }
+
+    public void HandleDrop(int from, int to)
+    {
+        if (from == to)
+        {
+            return;
+        }
+
+        if (GetItem(to) == null)
+        {
+            MoveItem(from, to);
+        }
+        else
+        {
+            SwapItem(from, to);
+        }
     }
 
     public bool AddItem(ItemData itemData, int count = 1)

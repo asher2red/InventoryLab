@@ -47,7 +47,7 @@ public class InventoryUI : MonoBehaviour
         for (int i = 0; i < slotCount; i++)
         {
             var slot = Instantiate(slotPrefab, slotRoot);
-            slot.Initialize(i, model.SelectSlot);
+            slot.Initialize(i, model.SelectSlot, model.HandleDrop);
 
             slots.Add(slot);
         }
