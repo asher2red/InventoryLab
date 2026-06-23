@@ -66,6 +66,7 @@ public class InventoryUI : MonoBehaviour
         detailUI.Bind(model.Items[index]);
     }
 
+    
     public void AddPotion()
     {
         model.AddItem(testItems[1], 1);
@@ -74,5 +75,15 @@ public class InventoryUI : MonoBehaviour
     public void RemovePotion()
     {
         model.RemoveItem(testItems[1], 1);
+    }
+
+    public void TestMove()
+    {
+        model.MoveItem(0, 10);
+    }
+
+    public void TestSwap()
+    {
+        model.SwapItem(0, 1);
     }
 }

@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using Unity.IO.LowLevel.Unsafe;
+using UnityEngine.Rendering;
+using UnityEngine.WSA;
 
 public class InventoryModel
 {
@@ -35,6 +37,75 @@ public class InventoryModel
         OnInventoryChanged?.Invoke();
     }
 
+    public InventoryItem getItem(int index)
+    {
+        if (index < 0 || index >= items.Count)
+        {
+            return null;
+        }
+
+        return items[index];
+    }
+
+    public bool MoveItem(int from, int to)
+    {
+        if (from == to)
+        {
+            return false;
+        }
+
+        if (!IsValidIndex(from))
+        {
+            return false;
+        }
+
+        if (!IsValidIndex(to))
+        {
+            return false;
+        }
+
+        if (items[from] == null)
+        {
+            return false;
+        }
+
+        if (items[to] != null)
+        {
+            return false;
+        }
+
+        items[to] = items[from];
+        items[from] = null;
+
+        OnInventoryChanged!.Invoke();
+
+        return true;
+    }
+
+    public bool SwapItem(int a, int b)
+    {
+        if (a == b)
+        {
+            return false;
+        }
+
+        if (!IsValidIndex(a))
+        {
+            return false;
+        }
+
+        if (!IsValidIndex(b))
+        {
+            return false;
+        }
+
+        (items[a], items[b]) = (items[b], items[a]);
+
+        OnInventoryChanged!.Invoke();
+
+        return true;
+    }
+
     public void SelectSlot(int index)
     {
         if (index < 0 || index >= items.Count)
@@ -48,7 +119,7 @@ public class InventoryModel
         }
 
         SelectedIndex = index;
-        
+
         OnSelectedSlotChanged?.Invoke(index);
     }
 
@@ -168,5 +239,11 @@ public class InventoryModel
         OnInventoryChanged?.Invoke();
 
         return false;
+    }
+
+    private bool IsValidIndex(int index)
+    {
+        return index >= 0 &&
+            index < items.Count;
     }
 }
