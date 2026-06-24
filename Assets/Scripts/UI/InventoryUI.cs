@@ -29,8 +29,10 @@ public class InventoryUI : MonoBehaviour
         model.OnSelectedSlotChanged += OnSelectedSlotChanged;
 
         model.AddItem(testItems[0], 1);
-        model.AddItem(testItems[1], 100);
+        model.AddItem(testItems[1], 30);
         model.AddItem(testItems[2], 3);
+        model.DebugSetItem(3, testItems[1], 50);
+        model.DebugSetItem(4, testItems[1], 50);
 
         Refresh();
     }
@@ -66,7 +68,7 @@ public class InventoryUI : MonoBehaviour
 
         if (data == null) return;
 
-        model.import(data, itemDatabase);
+        model.Import(data, itemDatabase);
     }
 
     private void Refresh()

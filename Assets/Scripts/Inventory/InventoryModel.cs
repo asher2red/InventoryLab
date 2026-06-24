@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.Xml;
 using Unity.IO.LowLevel.Unsafe;
+using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.UIElements;
 using UnityEngine.WSA;
@@ -107,6 +109,42 @@ public class InventoryModel
         return true;
     }
 
+    public bool MergeItem(int from, int to)
+    {
+        if (!IsValidIndex(from)) return false;
+
+        if (!IsValidIndex(to)) return false;
+
+        if (from == to) return false;
+
+        var source = items[from];
+        var target = items[to];
+
+        if (source == null || target == null) return false;
+
+        if (source.data != target.data) return false;
+
+        if (!source.data.stackable) return false;
+
+        int maxStack = source.data.maxStack;
+
+        if (target.count >= maxStack) return false;
+
+        int movable = Mathf.Min(source.count, maxStack - target.count);
+
+        target.count += movable;
+        source.count -= movable;
+
+        if (source.count <= 0)
+        {
+            items[from] = null;
+        }
+
+        OnInventoryChanged?.Invoke();
+
+        return true;
+    }
+
     public void SelectSlot(int index)
     {
         if (index < 0 || index >= items.Count)
@@ -131,9 +169,17 @@ public class InventoryModel
             return;
         }
 
-        if (GetItem(to) == null)
+        var source = GetItem(from);
+        var target = GetItem(to);
+
+        if (target == null)
         {
             MoveItem(from, to);
+        }
+        else if (source != null && target != null &&
+            source.data == target.data && source.data.stackable)
+        {
+            MergeItem(from, to);
         }
         else
         {
@@ -141,7 +187,7 @@ public class InventoryModel
         }
     }
 
-    public void import(InventorySaveData saveData, ItemDatabase database)
+    public void Import(InventorySaveData saveData, ItemDatabase database)
     {
         for (int i = 0; i<items.Count; i++)
         {
@@ -299,6 +345,17 @@ public class InventoryModel
         OnInventoryChanged?.Invoke();
 
         return false;
+    }
+
+    public void DebugSetItem(int slotIndex, ItemData itemData, int count)
+    {
+        items[slotIndex] = new InventoryItem
+        {
+            data = itemData,
+            count = count
+        };
+
+        OnInventoryChanged?.Invoke();
     }
 
     private bool IsValidIndex(int index)
