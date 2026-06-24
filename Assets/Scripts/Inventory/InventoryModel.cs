@@ -145,6 +145,35 @@ public class InventoryModel
         return true;
     }
 
+    public bool SplitItem(int slotIndex, int splitCount)
+    {
+        if (!IsValidIndex(slotIndex)) return false;
+
+        var source = items[slotIndex];
+
+        if (source == null) return false;
+
+        if (splitCount <= 0) return false;
+
+        if (splitCount >= source.count) return false;
+
+        int emptySlot = FindEmptySlot();
+
+        if (emptySlot < 0) return false;
+
+        source.count -= splitCount;
+
+        items[emptySlot] = new InventoryItem
+        {
+            data = source.data,
+            count = splitCount
+        };
+
+        OnInventoryChanged?.Invoke();
+
+        return true;
+    }
+
     public void SelectSlot(int index)
     {
         if (index < 0 || index >= items.Count)
@@ -362,5 +391,15 @@ public class InventoryModel
     {
         return index >= 0 &&
             index < items.Count;
+    }
+
+    private int FindEmptySlot()
+    {
+        for (int i = 0; i<items.Count; i++)
+        {
+            if (items[i] == null) return i;
+        }
+
+        return -1;
     }
 }

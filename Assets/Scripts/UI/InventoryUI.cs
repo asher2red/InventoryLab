@@ -104,4 +104,13 @@ public class InventoryUI : MonoBehaviour
     {
         model.SwapItem(0, 1);
     }
+
+    public void TestSplit()
+    {
+        int selected = model.SelectedIndex;
+
+        if (selected < 0) return;
+
+        model.SplitItem(selected, 10);
+    }
 }
