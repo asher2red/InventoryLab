@@ -6,6 +6,16 @@ Unity UGUI 기반 인벤토리 시스템 학습 프로젝트
 
 ---
 
+## 스크린샷
+
+### UI 화면
+![Inventory UI](Docs/UI.png)
+
+### 저장 데이터 예시
+![Save Data Example](Docs/SaveData.png)
+
+---
+
 ## 개발 환경
 
 - Unity 6
