@@ -20,4 +20,5 @@ public class InventoryDetailUI : MonoBehaviour
         descriptionText.text = item.data.description;
         countText.text = $"Quantity: {item.count}";
     }
+
 }

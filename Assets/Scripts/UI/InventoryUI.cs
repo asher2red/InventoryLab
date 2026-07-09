@@ -9,6 +9,8 @@ public class InventoryUI : MonoBehaviour
 
     [SerializeField] private InventoryDetailUI detailUI;
 
+    [SerializeField] private SplitPopupUI splitPopup;
+
     [SerializeField] private List<ItemData> testItems;
 
     [SerializeField] private int slotCount = 20;
@@ -93,6 +95,18 @@ public class InventoryUI : MonoBehaviour
     public void RemovePotion()
     {
         model.RemoveItem(testItems[1], 1);
+    }
+
+    public void OpenSplitPopup()
+    {
+        int selected = model.SelectedIndex;
+
+        if (selected < 0) return;
+
+        splitPopup.Open(amount =>
+        {
+            model.SplitItem(selected, amount);
+        });
     }
 
     public void TestMove()
