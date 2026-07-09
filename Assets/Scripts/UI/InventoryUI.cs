@@ -103,7 +103,9 @@ public class InventoryUI : MonoBehaviour
 
         if (selected < 0) return;
 
-        splitPopup.Open(amount =>
+        var item = model.GetItem(selected);
+
+        splitPopup.Open(item.count - 1, amount =>
         {
             model.SplitItem(selected, amount);
         });
