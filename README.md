@@ -33,6 +33,8 @@ Unity UGUI 기반 인벤토리 시스템 학습 프로젝트
 - 이벤트 기반 UI 갱신
 - Drag & Drop 구현
 - JSON 직렬화 및 저장 시스템 구현
+- 사용자 입력 검증(Validation)
+- UX를 고려한 팝업 인터페이스 구현
 
 ---
 
@@ -71,6 +73,13 @@ Unity UGUI 기반 인벤토리 시스템 학습 프로젝트
 - JSON 직렬화
 - Application.persistentDataPath 저장
 - Inventory Export / Import 지원
+
+### Split Item
+
+- 선택한 아이템의 수량 분할
+- 실시간 입력값 검증
+- 최대 분할 가능 수량 표시
+- 유효한 입력 시에만 Confirm 버튼 활성화
 
 ---
 
@@ -173,6 +182,26 @@ UI는 입력만 처리하며 실제 데이터 변경은 InventoryModel에서 수
 
 ---
 
+### Split Popup UX
+
+```text
+Split Button
+      ↓
+Popup Open
+      ↓
+Input Validation
+      ↓
+Confirm Button Enable
+      ↓
+InventoryModel.SplitItem()
+```
+
+Split 기능은 Popup UI와 InventoryModel을 분리하여 구현하였다.
+
+Popup은 입력과 검증만 담당하며, 실제 데이터 변경은 InventoryModel에서 수행하도록 설계하였다.
+
+---
+
 ## 학습 내용
 
 이번 프로젝트를 통해 다음 내용을 학습하였다.
@@ -186,6 +215,9 @@ UI는 입력만 처리하며 실제 데이터 변경은 InventoryModel에서 수
 - JSON Serialization
 - Save / Load 시스템
 - Model / View 분리 설계
+- 사용자 입력 Validation
+- UI 상태 관리(Button Interactable)
+- Popup UI 설계
 
 ---
 
