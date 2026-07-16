@@ -22,6 +22,7 @@ Unity UGUI 기반 인벤토리 시스템 학습 프로젝트
 - C#
 - UGUI
 - TextMeshPro
+- Addressables
 
 ---
 
@@ -35,6 +36,7 @@ Unity UGUI 기반 인벤토리 시스템 학습 프로젝트
 - JSON 직렬화 및 저장 시스템 구현
 - 사용자 입력 검증(Validation)
 - UX를 고려한 팝업 인터페이스 구현
+- Addressables 기반 리소스 로드 구조 학습
 
 ---
 
@@ -51,8 +53,17 @@ Unity UGUI 기반 인벤토리 시스템 학습 프로젝트
 
 - ScriptableObject 기반 ItemData 관리
 - 아이템 ID 기반 데이터 참조
+- Addressable AssetReferenceSprite 기반 아이콘 참조
 - 스택 가능 여부 설정
 - 최대 스택 수 설정
+
+### 아이콘 리소스 로드
+
+- Unity Addressables 패키지 적용
+- 아이템 아이콘을 Addressable Group(ItemIcons)으로 관리
+- AddressableSpriteLoader를 통한 아이콘 사전 로드
+- 로드된 Sprite 캐싱 및 재사용
+- UI 종료 시 Addressables Handle 해제
 
 ### 인벤토리 기능
 
@@ -88,24 +99,28 @@ Unity UGUI 기반 인벤토리 시스템 학습 프로젝트
 ```text
 Assets
 └── Scripts
-├── Data
-│ └── ItemData.cs
-│
-├── Inventory
-│ ├── InventoryItem.cs
-│ ├── InventoryModel.cs
-│ └── ItemDatabase.cs
-│
-├── UI
-│ ├── InventoryUI.cs
-│ ├── InventorySlotUI.cs
-│ ├── InventoryDetailUI.cs
-│ └── InventoryDragContext.cs
-│
-└── Save
-├── InventorySaveData.cs
-├── InventorySlotSaveData.cs
-└── InventorySaveSystem.cs
+    ├── Addressables
+    │   └── AddressableSpriteLoader.cs
+    │
+    ├── Data
+    │   └── ItemData.cs
+    │
+    ├── Inventory
+    │   ├── InventoryItem.cs
+    │   ├── InventoryModel.cs
+    │   └── ItemDatabase.cs
+    │
+    ├── UI
+    │   ├── InventoryUI.cs
+    │   ├── InventorySlotUI.cs
+    │   ├── InventoryDetailUI.cs
+    │   ├── InventoryDragContext.cs
+    │   └── SplitPopupUI.cs
+    │
+    └── Save
+        ├── InventorySaveData.cs
+        ├── InventorySlotSaveData.cs
+        └── InventorySaveSystem.cs
 ```
 ---
 
@@ -114,6 +129,7 @@ Assets
 ### ScriptableObject 기반 아이템 데이터
 
 아이템 정의 데이터는 ScriptableObject로 관리하고, 실제 인벤토리 데이터는 별도로 저장한다.
+아이콘은 Sprite를 직접 참조하지 않고 Addressable AssetReferenceSprite로 참조한다.
 
 ItemData
 ↓
@@ -122,6 +138,28 @@ InventoryItem
 InventoryModel
 
 이를 통해 데이터 정의와 런타임 데이터를 분리하였다.
+
+---
+
+### Addressables 기반 아이콘 로드
+
+아이콘 Sprite는 Addressables를 통해 비동기로 로드하고, UI 슬롯은 로드된 Sprite를 캐시에서 가져와 표시한다.
+
+```text
+ItemData.iconReference
+↓
+AddressableSpriteLoader.Initialize()
+↓
+Sprite Cache
+↓
+InventorySlotUI.Bind()
+```
+
+InventoryUI 시작 시 ItemDatabase의 아이템 목록을 기준으로 아이콘을 사전 로드한다.
+슬롯 갱신 시에는 AddressableSpriteLoader.GetSprite()를 통해 캐시된 Sprite를 사용하며,
+UI가 파괴될 때 ReleaseAll()로 Addressables Handle을 해제한다.
+
+이를 통해 아이템 데이터와 아이콘 리소스 로드 방식을 분리하고, 리소스 관리 흐름을 명확하게 구성하였다.
 
 ---
 
@@ -218,15 +256,15 @@ Popup은 입력과 검증만 담당하며, 실제 데이터 변경은 InventoryM
 - 사용자 입력 Validation
 - UI 상태 관리(Button Interactable)
 - Popup UI 설계
+- Addressables 기반 에셋 참조 및 비동기 로드
+- Addressables Handle 캐싱 및 해제
 
 ---
 
 ## 향후 개선 예정
 
 - 아이템 스택 병합
-- 아이템 분할(Split)
 - 장비 슬롯 시스템
-- Addressables 아이콘 로드
 - 버전 관리(Migration)
 - Unit Test 추가
 
