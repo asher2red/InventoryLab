@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.AddressableAssets;
 
 [CreateAssetMenu(fileName = "Item", menuName = "Inventory/Item")]
 public class ItemData : ScriptableObject
@@ -10,7 +11,7 @@ public class ItemData : ScriptableObject
     [TextArea]
     public string description;
 
-    public Sprite icon;
+    public AssetReferenceSprite iconReference;
 
     public bool stackable = true;
 

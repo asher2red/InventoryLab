@@ -42,7 +42,7 @@ public class InventorySlotUI : MonoBehaviour, IBeginDragHandler, IDragHandler, I
             return;
         }
 
-        icon.sprite = item.data.icon;
+        icon.sprite = AddressableSpriteLoader.GetSprite(item.data.iconReference);
 
         countText.text = item.count > 1 ? item.count.ToString() : "";
     }

@@ -18,6 +18,12 @@ MonoBehaviour:
 
     Effective for attacking
     enemies from a distance.'
-  icon: {fileID: 21300000, guid: f48b5a22277fe0c4d86a96c23b12e95f, type: 3}
+  iconReference:
+    m_AssetGUID: f48b5a22277fe0c4d86a96c23b12e95f
+    m_SubObjectName: W_Bow01
+    m_SubObjectType: UnityEngine.Sprite, UnityEngine.CoreModule, Version=0.0.0.0,
+      Culture=neutral, PublicKeyToken=null
+    m_SubObjectGUID: 
+    m_EditorAssetChanged: 0
   stackable: 1
   maxStack: 99

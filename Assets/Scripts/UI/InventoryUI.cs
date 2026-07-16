@@ -21,8 +21,10 @@ public class InventoryUI : MonoBehaviour
 
     private InventoryModel model;
 
-    private void Start()
+    private async Awaitable Start()
     {
+        await AddressableSpriteLoader.Initialize(itemDatabase.Items);
+
         model = new InventoryModel(slotCount);
 
         CreateSlots();
@@ -44,8 +46,10 @@ public class InventoryUI : MonoBehaviour
         if (model != null)
         {
             model.OnInventoryChanged -= Refresh;
-            model.OnSelectedSlotChanged += OnSelectedSlotChanged;
+            model.OnSelectedSlotChanged -= OnSelectedSlotChanged;
         }
+
+        AddressableSpriteLoader.ReleaseAll();
     }
 
     private void CreateSlots()
@@ -64,7 +68,7 @@ public class InventoryUI : MonoBehaviour
         InventorySaveSystem.Save(model.Export());
     }
 
-    public void LoadnInventory()
+    public void LoadInventory()
     {
         var data = InventorySaveSystem.Load();
 

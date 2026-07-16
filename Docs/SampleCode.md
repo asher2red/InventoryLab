@@ -1,0 +1,661 @@
+# InventoryLab Sample Code
+
+Unity UGUI 기반 인벤토리 시스템에서 제출용으로 선별한 코드입니다. 핵심 목표는 UI와 데이터 로직을 분리하고, 이벤트 기반으로 화면을 갱신하며, 아이템 이동/교환/병합/분할/저장 흐름을 명확하게 구현하는 것입니다.
+
+## 1. InventoryModel
+
+`InventoryModel`은 인벤토리의 핵심 상태와 규칙을 담당하는 클래스입니다. UI를 직접 참조하지 않고 이벤트만 발행하기 때문에, 화면 구현과 독립적으로 테스트하거나 재사용할 수 있습니다.
+
+### 구현 의도
+
+- 슬롯 데이터는 `List<InventoryItem>`으로 관리하고 외부에는 `IReadOnlyList`로 노출했습니다.
+- 데이터 변경 시 `OnInventoryChanged` 이벤트를 발행해 UI가 스스로 갱신하도록 했습니다.
+- 드래그 앤 드롭 결과는 대상 슬롯 상태에 따라 이동, 병합, 교환으로 분기했습니다.
+- 스택 가능한 아이템은 최대 수량을 넘지 않도록 계산하고, 남은 수량은 빈 슬롯에 배치했습니다.
+- 저장/불러오기는 런타임 객체를 저장용 DTO로 변환하는 `Export`, `Import`로 분리했습니다.
+
+```csharp
+using System;
+using System.Collections.Generic;
+using UnityEngine;
+
+public class InventoryModel
+{
+    public event Action OnInventoryChanged;
+    public event Action<int> OnSelectedSlotChanged;
+
+    public IReadOnlyList<InventoryItem> Items => items;
+    public int SelectedIndex { get; private set; } = -1;
+
+    private readonly List<InventoryItem> items;
+
+    public InventoryModel(int slotCount)
+    {
+        items = new List<InventoryItem>(slotCount);
+
+        for (int i = 0; i < slotCount; i++)
+        {
+            items.Add(null);
+        }
+    }
+
+    public InventoryItem GetItem(int index)
+    {
+        if (!IsValidIndex(index))
+        {
+            return null;
+        }
+
+        return items[index];
+    }
+
+    public bool AddItem(ItemData itemData, int count = 1)
+    {
+        if (itemData == null || count <= 0)
+        {
+            return false;
+        }
+
+        int remain = count;
+
+        if (itemData.stackable)
+        {
+            for (int i = 0; i < items.Count; i++)
+            {
+                var item = items[i];
+
+                if (item == null || item.data != itemData || item.count >= itemData.maxStack)
+                {
+                    continue;
+                }
+
+                int addable = itemData.maxStack - item.count;
+                int added = Math.Min(addable, remain);
+
+                item.count += added;
+                remain -= added;
+
+                if (remain <= 0)
+                {
+                    OnInventoryChanged?.Invoke();
+                    return true;
+                }
+            }
+        }
+
+        for (int i = 0; i < items.Count; i++)
+        {
+            if (items[i] != null)
+            {
+                continue;
+            }
+
+            int added = itemData.stackable ? Math.Min(remain, itemData.maxStack) : 1;
+
+            items[i] = new InventoryItem
+            {
+                data = itemData,
+                count = added
+            };
+
+            remain -= added;
+
+            if (remain <= 0)
+            {
+                OnInventoryChanged?.Invoke();
+                return true;
+            }
+        }
+
+        OnInventoryChanged?.Invoke();
+        return remain <= 0;
+    }
+
+    public bool MoveItem(int from, int to)
+    {
+        if (from == to || !IsValidIndex(from) || !IsValidIndex(to))
+        {
+            return false;
+        }
+
+        if (items[from] == null || items[to] != null)
+        {
+            return false;
+        }
+
+        items[to] = items[from];
+        items[from] = null;
+
+        OnInventoryChanged?.Invoke();
+        return true;
+    }
+
+    public bool SwapItem(int a, int b)
+    {
+        if (a == b || !IsValidIndex(a) || !IsValidIndex(b))
+        {
+            return false;
+        }
+
+        (items[a], items[b]) = (items[b], items[a]);
+
+        OnInventoryChanged?.Invoke();
+        return true;
+    }
+
+    public bool MergeItem(int from, int to)
+    {
+        if (from == to || !IsValidIndex(from) || !IsValidIndex(to))
+        {
+            return false;
+        }
+
+        var source = items[from];
+        var target = items[to];
+
+        if (source == null || target == null)
+        {
+            return false;
+        }
+
+        if (source.data != target.data || !source.data.stackable)
+        {
+            return false;
+        }
+
+        int maxStack = source.data.maxStack;
+
+        if (target.count >= maxStack)
+        {
+            return false;
+        }
+
+        int movable = Mathf.Min(source.count, maxStack - target.count);
+
+        target.count += movable;
+        source.count -= movable;
+
+        if (source.count <= 0)
+        {
+            items[from] = null;
+        }
+
+        OnInventoryChanged?.Invoke();
+        return true;
+    }
+
+    public bool SplitItem(int slotIndex, int splitCount)
+    {
+        if (!IsValidIndex(slotIndex))
+        {
+            return false;
+        }
+
+        var source = items[slotIndex];
+
+        if (source == null || splitCount <= 0 || splitCount >= source.count)
+        {
+            return false;
+        }
+
+        int emptySlot = FindEmptySlot();
+
+        if (emptySlot < 0)
+        {
+            return false;
+        }
+
+        source.count -= splitCount;
+
+        items[emptySlot] = new InventoryItem
+        {
+            data = source.data,
+            count = splitCount
+        };
+
+        OnInventoryChanged?.Invoke();
+        return true;
+    }
+
+    public void HandleDrop(int from, int to)
+    {
+        if (from == to)
+        {
+            return;
+        }
+
+        var source = GetItem(from);
+        var target = GetItem(to);
+
+        if (target == null)
+        {
+            MoveItem(from, to);
+        }
+        else if (source != null && source.data == target.data && source.data.stackable)
+        {
+            MergeItem(from, to);
+        }
+        else
+        {
+            SwapItem(from, to);
+        }
+    }
+
+    public void SelectSlot(int index)
+    {
+        if (!IsValidIndex(index) || index == SelectedIndex)
+        {
+            return;
+        }
+
+        SelectedIndex = index;
+        OnSelectedSlotChanged?.Invoke(index);
+    }
+
+    public InventorySaveData Export()
+    {
+        InventorySaveData saveData = new();
+
+        for (int i = 0; i < items.Count; i++)
+        {
+            var item = items[i];
+
+            if (item == null)
+            {
+                continue;
+            }
+
+            saveData.items.Add(new InventorySlotSaveData
+            {
+                slotIndex = i,
+                itemId = item.data.id,
+                count = item.count
+            });
+        }
+
+        return saveData;
+    }
+
+    public void Import(InventorySaveData saveData, ItemDatabase database)
+    {
+        for (int i = 0; i < items.Count; i++)
+        {
+            items[i] = null;
+        }
+
+        foreach (var entry in saveData.items)
+        {
+            if (!IsValidIndex(entry.slotIndex))
+            {
+                continue;
+            }
+
+            var itemData = database.GetItem(entry.itemId);
+
+            if (itemData == null)
+            {
+                continue;
+            }
+
+            items[entry.slotIndex] = new InventoryItem
+            {
+                data = itemData,
+                count = entry.count
+            };
+        }
+
+        OnInventoryChanged?.Invoke();
+    }
+
+    private bool IsValidIndex(int index)
+    {
+        return index >= 0 && index < items.Count;
+    }
+
+    private int FindEmptySlot()
+    {
+        for (int i = 0; i < items.Count; i++)
+        {
+            if (items[i] == null)
+            {
+                return i;
+            }
+        }
+
+        return -1;
+    }
+}
+```
+
+## 2. InventoryUI
+
+`InventoryUI`는 Unity 씬의 UI 오브젝트와 `InventoryModel`을 연결하는 View 역할을 합니다. 입력은 UI에서 받고, 실제 데이터 변경은 Model에 위임합니다.
+
+### 구현 의도
+
+- 슬롯 프리팹을 동적으로 생성해 슬롯 수 변경에 대응할 수 있게 했습니다.
+- `InventoryModel`의 이벤트를 구독해 데이터 변경 시 전체 슬롯 UI를 갱신합니다.
+- 드래그 앤 드롭, 슬롯 선택, 저장/불러오기, 분할 팝업 호출을 Model API로 연결했습니다.
+- UI는 인벤토리 규칙을 직접 판단하지 않고 Model에 위임합니다.
+
+```csharp
+using System.Collections.Generic;
+using UnityEngine;
+
+public class InventoryUI : MonoBehaviour
+{
+    [SerializeField] private InventorySlotUI slotPrefab;
+    [SerializeField] private Transform slotRoot;
+    [SerializeField] private InventoryDetailUI detailUI;
+    [SerializeField] private SplitPopupUI splitPopup;
+    [SerializeField] private List<ItemData> testItems;
+    [SerializeField] private int slotCount = 20;
+    [SerializeField] private ItemDatabase itemDatabase;
+
+    private readonly List<InventorySlotUI> slots = new();
+    private InventoryModel model;
+
+    private void Start()
+    {
+        model = new InventoryModel(slotCount);
+
+        CreateSlots();
+
+        model.OnInventoryChanged += Refresh;
+        model.OnSelectedSlotChanged += OnSelectedSlotChanged;
+
+        model.AddItem(testItems[0], 1);
+        model.AddItem(testItems[1], 30);
+        model.AddItem(testItems[2], 3);
+
+        Refresh();
+    }
+
+    private void OnDestroy()
+    {
+        if (model == null)
+        {
+            return;
+        }
+
+        model.OnInventoryChanged -= Refresh;
+        model.OnSelectedSlotChanged -= OnSelectedSlotChanged;
+    }
+
+    private void CreateSlots()
+    {
+        for (int i = 0; i < slotCount; i++)
+        {
+            var slot = Instantiate(slotPrefab, slotRoot);
+            slot.Initialize(i, model.SelectSlot, model.HandleDrop);
+            slots.Add(slot);
+        }
+    }
+
+    public void SaveInventory()
+    {
+        InventorySaveSystem.Save(model.Export());
+    }
+
+    public void LoadInventory()
+    {
+        var data = InventorySaveSystem.Load();
+
+        if (data == null)
+        {
+            return;
+        }
+
+        model.Import(data, itemDatabase);
+    }
+
+    public void OpenSplitPopup()
+    {
+        int selected = model.SelectedIndex;
+
+        if (selected < 0)
+        {
+            return;
+        }
+
+        var item = model.GetItem(selected);
+
+        if (item == null || item.count <= 1)
+        {
+            return;
+        }
+
+        splitPopup.Open(item.count - 1, amount =>
+        {
+            model.SplitItem(selected, amount);
+        });
+    }
+
+    private void Refresh()
+    {
+        for (int i = 0; i < slots.Count; i++)
+        {
+            slots[i].Bind(model.Items[i]);
+        }
+    }
+
+    private void OnSelectedSlotChanged(int index)
+    {
+        detailUI.Bind(model.Items[index]);
+    }
+}
+```
+
+## 3. InventorySlotUI
+
+`InventorySlotUI`는 개별 슬롯의 표시와 입력을 담당합니다. 슬롯 자체는 아이템 이동 규칙을 알지 않고, 클릭/드롭 이벤트를 상위 계층으로 전달합니다.
+
+### 구현 의도
+
+- `Bind`에서 아이템 존재 여부에 따라 아이콘과 수량 텍스트를 갱신합니다.
+- 슬롯 클릭은 선택 이벤트로 전달합니다.
+- 드래그 시작 슬롯 인덱스를 저장하고, 드롭 시 출발 슬롯과 도착 슬롯을 Model로 전달합니다.
+
+```csharp
+using TMPro;
+using UnityEngine;
+using UnityEngine.EventSystems;
+using UnityEngine.UI;
+
+public class InventorySlotUI : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHandler, IDropHandler
+{
+    [SerializeField] private Image icon;
+    [SerializeField] private TMP_Text countText;
+    [SerializeField] private Button button;
+
+    private int slotIndex;
+    private System.Action<int> onClick;
+    private System.Action<int, int> onDrop;
+
+    public void Initialize(int index, System.Action<int> click, System.Action<int, int> drop)
+    {
+        slotIndex = index;
+        onClick = click;
+        onDrop = drop;
+
+        button.onClick.AddListener(OnClick);
+    }
+
+    private void OnDestroy()
+    {
+        button.onClick.RemoveListener(OnClick);
+    }
+
+    public void Bind(InventoryItem item)
+    {
+        bool hasItem = item != null && item.data != null;
+
+        icon.enabled = hasItem;
+
+        if (!hasItem)
+        {
+            countText.text = string.Empty;
+            return;
+        }
+
+        icon.sprite = item.data.icon;
+        countText.text = item.count > 1 ? item.count.ToString() : string.Empty;
+    }
+
+    private void OnClick()
+    {
+        onClick?.Invoke(slotIndex);
+    }
+
+    public void OnBeginDrag(PointerEventData eventData)
+    {
+        InventoryDragContext.DragIndex = slotIndex;
+    }
+
+    public void OnDrag(PointerEventData eventData)
+    {
+    }
+
+    public void OnEndDrag(PointerEventData eventData)
+    {
+    }
+
+    public void OnDrop(PointerEventData eventData)
+    {
+        int from = InventoryDragContext.DragIndex;
+        int to = slotIndex;
+
+        onDrop?.Invoke(from, to);
+    }
+}
+```
+
+## 4. SplitPopupUI
+
+`SplitPopupUI`는 아이템 수량 분할 시 사용자 입력을 검증하는 팝업입니다. 실제 아이템 분할은 `InventoryModel.SplitItem`이 담당하고, 팝업은 입력값 검증과 콜백 호출만 담당합니다.
+
+### 구현 의도
+
+- 팝업을 열 때 분할 가능한 최대 수량을 전달받습니다.
+- 입력값이 숫자이고 허용 범위 안에 있을 때만 Confirm 버튼을 활성화합니다.
+- Confirm 시 검증된 수량을 콜백으로 전달하고 팝업을 닫습니다.
+
+```csharp
+using TMPro;
+using UnityEngine;
+using UnityEngine.UI;
+
+public class SplitPopupUI : MonoBehaviour
+{
+    [SerializeField] private TMP_InputField amountInput;
+    [SerializeField] private TMP_Text maxAmountText;
+    [SerializeField] private TMP_Text currentAmountText;
+    [SerializeField] private Button confirmButton;
+
+    private int maxSplitAmount;
+    private System.Action<int> onConfirm;
+
+    public void Open(int maxAmount, System.Action<int> callback)
+    {
+        gameObject.SetActive(true);
+
+        maxSplitAmount = maxAmount;
+        currentAmountText.text = $"Current : {maxAmount + 1}";
+        maxAmountText.text = $"Max : {maxAmount}";
+        amountInput.text = string.Empty;
+        confirmButton.interactable = false;
+        onConfirm = callback;
+    }
+
+    public void Confirm()
+    {
+        if (!int.TryParse(amountInput.text, out int amount))
+        {
+            return;
+        }
+
+        onConfirm?.Invoke(amount);
+        Close();
+    }
+
+    public void Cancel()
+    {
+        Close();
+    }
+
+    public void Close()
+    {
+        gameObject.SetActive(false);
+    }
+
+    public void ValidateInput(string value)
+    {
+        bool isValid = int.TryParse(value, out int amount)
+            && amount > 0
+            && amount <= maxSplitAmount;
+
+        confirmButton.interactable = isValid;
+    }
+}
+```
+
+## 5. Data Classes
+
+아이템 정의 데이터와 런타임 인벤토리 데이터를 분리했습니다. `ItemData`는 ScriptableObject로 에디터에서 관리하고, `InventoryItem`은 실제 슬롯에 들어가는 런타임 상태를 표현합니다.
+
+```csharp
+using UnityEngine;
+
+[CreateAssetMenu(fileName = "Item", menuName = "Inventory/Item")]
+public class ItemData : ScriptableObject
+{
+    public int id;
+    public string itemName;
+
+    [TextArea]
+    public string description;
+
+    public Sprite icon;
+    public bool stackable = true;
+    public int maxStack = 99;
+}
+```
+
+```csharp
+using System;
+
+[Serializable]
+public class InventoryItem
+{
+    public ItemData data;
+    public int count;
+}
+```
+
+## 6. Save Data
+
+저장 데이터는 `ItemData` 객체를 직접 저장하지 않고, 아이템 ID와 슬롯 인덱스, 수량만 저장합니다. 이를 통해 ScriptableObject 참조와 저장 데이터를 분리했습니다.
+
+```csharp
+using System;
+using System.Collections.Generic;
+
+[Serializable]
+public class InventorySaveData
+{
+    public int version = 1;
+    public List<InventorySlotSaveData> items = new();
+}
+
+[Serializable]
+public class InventorySlotSaveData
+{
+    public int slotIndex;
+    public int itemId;
+    public int count;
+}
+```
+
+## 제출 시 설명 요약
+
+이 샘플 코드는 Unity UGUI 환경에서 구현한 인벤토리 시스템의 핵심 구조입니다. `InventoryModel`이 인벤토리 상태와 규칙을 담당하고, `InventoryUI`는 이벤트를 구독해 화면을 갱신합니다. 슬롯 UI는 입력만 전달하며, 실제 아이템 이동/교환/병합/분할 판단은 Model에서 처리합니다. 저장 시에는 런타임 객체를 직접 저장하지 않고 슬롯 인덱스, 아이템 ID, 수량으로 변환해 JSON 직렬화가 가능한 구조로 분리했습니다.

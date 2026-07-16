@@ -7,6 +7,8 @@ public class ItemDatabase : MonoBehaviour
 
     private Dictionary<int, ItemData> itemMap;
 
+    public  IReadOnlyList<ItemData> Items => items;
+
     private void Awake()
     {
         itemMap = new();
